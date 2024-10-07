@@ -1,0 +1,59 @@
+clear all
+close all
+
+%%%%%%%% Define the path to the folder containing your EEG data files:
+% Read
+dataFolder = '/Users/andrewding/Desktop/EEG_projects/Visit_1/20240805_023C';
+
+% Out
+out_path ='(/Users/andrewding/Desktop/Preprocessed_data/Visit_1/20240805_023C';
+new_folder='filter30_s15_rmbase60\rest_right';
+outfolder = fullfile(out_path, new_folder);
+% Create the folder
+mkdir(outfolder);
+
+% List all the '.vhdr' files in the folder
+dataFiles = dir(fullfile(dataFolder, '*sti_rest_r*.vhdr'));
+
+%%%%%%% Loop through each data file #######
+for i = 1:length(dataFiles)
+    % Print the name of the file being processed
+    disp(['Reading file: ' dataFiles(i).name]);
+
+    % Load EEG data
+    eeg_data = pop_loadbv(dataFolder, dataFiles(i).name, [], []); 
+
+
+    %%%%%% ===== Step1. Filtering ( band-pass filter between 1 and 30 Hz) ===== %%%%%
+    eeg_data = pop_eegfiltnew(eeg_data, 1, 30);
+
+
+    %%%%%% =====  Step2. Epoch  ===== %%%%%%%%%%%%%
+    % Define event code for S15/S255
+    event = 'S 15';
+    % Epoch data based on event S15
+    eeg_data = pop_epoch(eeg_data, {event}, [-0.08, 0.35]);
+ 
+    %%%%%% ===== Step3. Remove baseline correction (min: -80, max: 0)  ===== %%%%%%%%
+    eeg_data = pop_rmbase(eeg_data, [-80, 0]);
+    
+    %%%%%% Save Preprocessed Data %%%%%%
+    outfn = fullfile(outfolder, ['filter_' dataFiles(i).name]);
+
+    % Display the full output file path for debugging
+    disp(['Saving to: ' outfn]);
+
+    % Check if the file exists
+    if exist(outfn, 'file')
+        disp('File already exists. Skipping.');
+    else
+        % Attempt to save the data
+        try
+            pop_saveset(eeg_data, 'filename', outfn);
+            disp('File saved successfully.');
+        catch exception
+            disp(['Error saving file: ' exception.message]);
+        end
+    end
+end
+
